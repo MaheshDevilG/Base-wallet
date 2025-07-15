@@ -3,138 +3,245 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Base Wallet Checker</title>
+  <title>🌐 Base Wallet Balance Checker</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
+    /* Background */
     body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 20px;
-      background-color: #f9f9f9;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      background-size: 600% 600%;
+      animation: gradientShift 20s ease infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #fff;
     }
-    input, button {
-      padding: 10px;
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
+      padding: 30px;
+      border-radius: 20px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      animation: fadeIn 1.5s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 30px;
+      margin-bottom: 10px;
+      color: #00eaff;
+      text-shadow: 0 0 5px #00eaff;
+    }
+
+    input {
       width: 100%;
-      margin-bottom: 20px;
+      padding: 14px;
+      margin: 20px 0;
+      border: none;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
       font-size: 16px;
+      outline: none;
+      box-shadow: 0 0 12px rgba(0, 255, 255, 0.3);
     }
-    h2 {
-      border-bottom: 1px solid #ccc;
+
+    button {
+      background: #00eaff;
+      color: #000;
+      font-weight: bold;
+      border: none;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00eaff;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #00ffff;
+    }
+
+    .section {
+      text-align: left;
+      margin-top: 30px;
+    }
+
+    .section h2 {
+      border-bottom: 1px solid rgba(255,255,255,0.1);
       padding-bottom: 5px;
+      margin-bottom: 10px;
+      font-size: 20px;
+      color: #00eaff;
     }
-    .balance, .tokens {
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      padding: 6px 0;
+      font-size: 15px;
+    }
+
+    .loading {
+      font-style: italic;
+      color: #ccc;
+    }
+
+    .footer {
       margin-top: 20px;
+      font-size: 12px;
+      color: #bbb;
     }
-    ul { list-style-type: none; padding-left: 0; }
-    li { padding: 5px 0; }
   </style>
 </head>
 <body>
-  <h1>Base Wallet Checker</h1>
-  <input type="text" id="wallet" placeholder="Enter Ethereum wallet address">
-  <button onclick="checkBalances()">Check Balances</button>
 
-  <div class="balance">
-    <h2>ETH Balance:</h2>
+<div class="card">
+  <h1>💎 Base Wallet Checker</h1>
+  <p>Check your ETH & Token balances on <strong>Base Mainnet</strong></p>
+
+  <input type="text" id="wallet" placeholder="Enter Ethereum wallet" value="0x77eeE3d7Ea518dDBd365E982E6B7Ab8e43d7b3e6">
+  <button onclick="checkBalances()">🔍 Check</button>
+
+  <div class="section">
+    <h2>ETH Balance</h2>
     <p id="ethBalance">—</p>
   </div>
 
-  <div class="tokens">
-    <h2>ERC-20 Token Balances:</h2>
-    <ul id="tokenList"></ul>
+  <div class="section">
+    <h2>ERC-20 Token Balances</h2>
+    <p id="loading" class="loading" style="display:none;">Fetching token data...</p>
+    <ul id="tokenList">
+      <li>USDC: 103.42</li>
+      <li>DAI: 55.12</li>
+      <li>WETH: 0.4123</li>
+    </ul>
   </div>
 
-  <script>
-    const ALCHEMY_API_URL = 'https://base-mainnet.g.alchemy.com/v2/xHFUtFcnGauzLjlis6SuTYvp4hm1bEfK';
+  <div class="footer">
+    🚀 Powered by Alchemy | Crafted with ❤️ by Devil Gupta
+  </div>
+</div>
 
-    async function checkBalances() {
-      const address = document.getElementById('wallet').value.trim();
-      if (!address) return alert("Please enter a wallet address");
+<script>
+  const ALCHEMY_API_URL = 'https://base-mainnet.g.alchemy.com/v2/xHFUtFcnGauzLjlis6SuTYvp4hm1bEfK';
 
-      // Clear previous output
-      document.getElementById('ethBalance').textContent = "Loading...";
-      document.getElementById('tokenList').innerHTML = '';
+  async function checkBalances() {
+    const address = document.getElementById('wallet').value.trim();
+    if (!address) return alert("Please enter a wallet address");
 
-      try {
-        // Fetch ETH balance
-        const ethRes = await fetch(ALCHEMY_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            method: "eth_getBalance",
-            params: [address, "latest"],
-            id: 1
-          })
-        });
-        const ethData = await ethRes.json();
-        const ethInWei = BigInt(ethData.result);
-        const ethInEther = Number(ethInWei) / 1e18;
-        document.getElementById('ethBalance').textContent = ethInEther.toFixed(6) + " ETH";
+    document.getElementById('ethBalance').textContent = "⏳ Loading...";
+    document.getElementById('tokenList').innerHTML = '';
+    document.getElementById('loading').style.display = "block";
 
-        // Fetch ERC-20 token balances
-        const tokenRes = await fetch(ALCHEMY_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: 2,
-            method: "alchemy_getTokenBalances",
-            params: [address]
-          })
-        });
+    try {
+      // ETH balance
+      const ethRes = await fetch(ALCHEMY_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "eth_getBalance",
+          params: [address, "latest"],
+          id: 1
+        })
+      });
+      const ethData = await ethRes.json();
+      const ethWei = BigInt(ethData.result);
+      const eth = Number(ethWei) / 1e18;
+      document.getElementById('ethBalance').textContent = eth.toFixed(6) + " ETH";
 
-        const tokenData = await tokenRes.json();
-        const tokens = tokenData.result.tokenBalances;
-        const tokenList = document.getElementById('tokenList');
+      // ERC-20 tokens
+      const tokenRes = await fetch(ALCHEMY_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "alchemy_getTokenBalances",
+          params: [address]
+        })
+      });
 
-        for (const token of tokens) {
-          const balance = BigInt(token.tokenBalance || 0);
-          if (balance === 0n) continue;
+      const tokenData = await tokenRes.json();
+      const tokens = tokenData.result.tokenBalances;
+      const tokenList = document.getElementById('tokenList');
+      tokenList.innerHTML = '';
 
-          // Fetch token metadata from Alchemy
-          let decimals = 18;
-          let symbol = token.contractAddress.slice(0, 6) + "...";
+      for (const token of tokens) {
+        const balance = BigInt(token.tokenBalance || 0);
+        if (balance === 0n) continue;
 
-          try {
-            const metadataRes = await fetch(ALCHEMY_API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: "2.0",
-                id: 3,
-                method: "alchemy_getTokenMetadata",
-                params: [token.contractAddress]
-              })
-            });
-            const meta = await metadataRes.json();
-            if (meta.result) {
-              decimals = parseInt(meta.result.decimals || 18);
-              symbol = meta.result.symbol || symbol;
-            }
-          } catch (err) {
-            console.log("Metadata fetch failed for", token.contractAddress);
+        let decimals = 18;
+        let symbol = token.contractAddress.slice(0, 6) + "...";
+
+        try {
+          const metaRes = await fetch(ALCHEMY_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 3,
+              method: "alchemy_getTokenMetadata",
+              params: [token.contractAddress]
+            })
+          });
+          const meta = await metaRes.json();
+          if (meta.result) {
+            decimals = parseInt(meta.result.decimals || 18);
+            symbol = meta.result.symbol || symbol;
           }
-
-          const humanBalance = Number(balance) / 10 ** decimals;
-          const li = document.createElement('li');
-          li.textContent = `${symbol}: ${humanBalance.toFixed(4)}`;
-          tokenList.appendChild(li);
+        } catch (e) {
+          console.warn("Metadata failed for", token.contractAddress);
         }
 
-        if (!tokenList.hasChildNodes()) {
-          const li = document.createElement('li');
-          li.textContent = "No ERC-20 tokens found.";
-          tokenList.appendChild(li);
-        }
-
-      } catch (error) {
-        alert("Something went wrong. Please check the address or try again.");
-        console.error(error);
+        const human = Number(balance) / 10 ** decimals;
+        const li = document.createElement('li');
+        li.textContent = `${symbol}: ${human.toFixed(4)}`;
+        tokenList.appendChild(li);
       }
+
+      if (!tokenList.hasChildNodes()) {
+        const li = document.createElement('li');
+        li.textContent = "No tokens found.";
+        tokenList.appendChild(li);
+      }
+
+    } catch (err) {
+      alert("Error fetching balances. Try again.");
+      console.error(err);
     }
-  </script>
+
+    document.getElementById('loading').style.display = "none";
+  }
+</script>
+
 </body>
 </html>
