@@ -53,54 +53,86 @@
       const address = document.getElementById('wallet').value.trim();
       if (!address) return alert("Please enter a wallet address");
 
-      // Fetch ETH balance
-      const ethRes = await fetch(ALCHEMY_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "eth_getBalance",
-          params: [address, "latest"],
-          id: 1
-        })
-      });
-      const ethData = await ethRes.json();
-      const ethInWei = BigInt(ethData.result);
-      const ethInEther = Number(ethInWei) / 1e18;
-      document.getElementById('ethBalance').textContent = ethInEther.toFixed(6) + " ETH";
+      // Clear previous output
+      document.getElementById('ethBalance').textContent = "Loading...";
+      document.getElementById('tokenList').innerHTML = '';
 
-      // Fetch ERC-20 token balances
-      const tokenRes = await fetch(ALCHEMY_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 2,
-          method: "alchemy_getTokenBalances",
-          params: [address]
-        })
-      });
-      const tokenData = await tokenRes.json();
-      const tokens = tokenData.result.tokenBalances;
+      try {
+        // Fetch ETH balance
+        const ethRes = await fetch(ALCHEMY_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "eth_getBalance",
+            params: [address, "latest"],
+            id: 1
+          })
+        });
+        const ethData = await ethRes.json();
+        const ethInWei = BigInt(ethData.result);
+        const ethInEther = Number(ethInWei) / 1e18;
+        document.getElementById('ethBalance').textContent = ethInEther.toFixed(6) + " ETH";
 
-      const tokenList = document.getElementById('tokenList');
-      tokenList.innerHTML = '';
+        // Fetch ERC-20 token balances
+        const tokenRes = await fetch(ALCHEMY_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "alchemy_getTokenBalances",
+            params: [address]
+          })
+        });
 
-      for (const token of tokens) {
-        const balance = BigInt(token.tokenBalance || 0);
-        if (balance === 0n) continue;
+        const tokenData = await tokenRes.json();
+        const tokens = tokenData.result.tokenBalances;
+        const tokenList = document.getElementById('tokenList');
 
-        // OPTIONAL: Replace with a better metadata API if needed
-        const tokenInfoRes = await fetch(`https://token-api.com/v1/token/${token.contractAddress}`);
-        const tokenInfo = await tokenInfoRes.json();
-        const decimals = tokenInfo?.decimals || 18;
-        const symbol = tokenInfo?.symbol || token.contractAddress.slice(0, 6) + '...';
+        for (const token of tokens) {
+          const balance = BigInt(token.tokenBalance || 0);
+          if (balance === 0n) continue;
 
-        const humanBalance = Number(balance) / 10 ** decimals;
+          // Fetch token metadata from Alchemy
+          let decimals = 18;
+          let symbol = token.contractAddress.slice(0, 6) + "...";
 
-        const li = document.createElement('li');
-        li.textContent = `${symbol}: ${humanBalance.toFixed(4)}`;
-        tokenList.appendChild(li);
+          try {
+            const metadataRes = await fetch(ALCHEMY_API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 3,
+                method: "alchemy_getTokenMetadata",
+                params: [token.contractAddress]
+              })
+            });
+            const meta = await metadataRes.json();
+            if (meta.result) {
+              decimals = parseInt(meta.result.decimals || 18);
+              symbol = meta.result.symbol || symbol;
+            }
+          } catch (err) {
+            console.log("Metadata fetch failed for", token.contractAddress);
+          }
+
+          const humanBalance = Number(balance) / 10 ** decimals;
+          const li = document.createElement('li');
+          li.textContent = `${symbol}: ${humanBalance.toFixed(4)}`;
+          tokenList.appendChild(li);
+        }
+
+        if (!tokenList.hasChildNodes()) {
+          const li = document.createElement('li');
+          li.textContent = "No ERC-20 tokens found.";
+          tokenList.appendChild(li);
+        }
+
+      } catch (error) {
+        alert("Something went wrong. Please check the address or try again.");
+        console.error(error);
       }
     }
   </script>
