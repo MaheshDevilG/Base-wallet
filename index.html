@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🌐 Base Wallet Balance Checker</title>
+  <title>🌐 Multi-Network Wallet Checker</title>
 
-  <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
-    /* Background */
     body {
       margin: 0;
       font-family: 'Poppins', sans-serif;
@@ -48,41 +46,40 @@
     }
 
     h1 {
-      font-size: 30px;
+      font-size: 28px;
       margin-bottom: 10px;
       color: #00eaff;
       text-shadow: 0 0 5px #00eaff;
     }
 
-    input {
+    input, select, button {
       width: 100%;
-      padding: 14px;
-      margin: 20px 0;
-      border: none;
-      border-radius: 12px;
-      background: rgba(0, 0, 0, 0.3);
-      color: white;
+      padding: 12px;
+      margin-top: 15px;
+      margin-bottom: 15px;
       font-size: 16px;
+      border-radius: 8px;
+      border: none;
       outline: none;
-      box-shadow: 0 0 12px rgba(0, 255, 255, 0.3);
+    }
+
+    input, select {
+      background-color: #2a2a2a;
+      color: #fff;
+      box-shadow: 0 0 8px rgba(0,255,255,0.2);
     }
 
     button {
-      background: #00eaff;
+      background-color: #00eaff;
       color: #000;
       font-weight: bold;
-      border: none;
-      padding: 12px 20px;
-      font-size: 16px;
-      border-radius: 10px;
       cursor: pointer;
       box-shadow: 0 0 15px #00eaff;
-      transition: all 0.3s ease;
+      transition: 0.3s;
     }
 
     button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 20px #00ffff;
+      background-color: #00c9d4;
     }
 
     .section {
@@ -100,8 +97,7 @@
 
     ul {
       list-style-type: none;
-      padding: 0;
-      margin: 0;
+      padding-left: 0;
     }
 
     li {
@@ -115,20 +111,37 @@
     }
 
     .footer {
-      margin-top: 20px;
+      margin-top: 25px;
       font-size: 12px;
       color: #bbb;
+    }
+
+    #viewMoreBtn {
+      background-color: transparent;
+      color: #00eaff;
+      font-weight: bold;
+      border: none;
+      margin-top: 10px;
+      text-decoration: underline;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h1>💎 Base Wallet Checker</h1>
-  <p>Check your ETH & Token balances on <strong>Base Mainnet</strong></p>
+  <h1>💎 Wallet Balance Checker</h1>
+  <p>Supports Ethereum, Arbitrum, Optimism, Base</p>
 
-  <input type="text" id="wallet" placeholder="Enter Ethereum wallet" value="0x77eeE3d7Ea518dDBd365E982E6B7Ab8e43d7b3e6">
-  <button onclick="checkBalances()">🔍 Check</button>
+  <select id="network">
+    <option value="eth">Ethereum</option>
+    <option value="arb">Arbitrum</option>
+    <option value="opt">Optimism</option>
+    <option value="base">Base</option>
+  </select>
+
+  <input type="text" id="wallet" placeholder="Enter Ethereum wallet address" value="0x742d35Cc6634C0532925a3b844Bc454e4438f44e">
+  <button onclick="checkBalances()">🔍 Check Balances</button>
 
   <div class="section">
     <h2>ETH Balance</h2>
@@ -138,31 +151,38 @@
   <div class="section">
     <h2>ERC-20 Token Balances</h2>
     <p id="loading" class="loading" style="display:none;">Fetching token data...</p>
-    <ul id="tokenList">
-      <li>USDC: 103.42</li>
-      <li>DAI: 55.12</li>
-      <li>WETH: 0.4123</li>
-    </ul>
+    <ul id="tokenList"></ul>
+    <button id="viewMoreBtn" style="display:none;" onclick="showAllTokens()">View More</button>
   </div>
 
   <div class="footer">
-    🚀 Powered by Alchemy | Crafted with ❤️ by Devil Gupta
+    🌐 Powered by Alchemy | Crafted with ❤️ by Devil
   </div>
 </div>
 
 <script>
-  const ALCHEMY_API_URL = 'https://base-mainnet.g.alchemy.com/v2/xHFUtFcnGauzLjlis6SuTYvp4hm1bEfK';
+  const API_KEY = 'xHFUtFcnGauzLjlis6SuTYvp4hm1bEfK';
+
+  const NETWORK_URLS = {
+    eth: `https://eth-mainnet.g.alchemy.com/v2/${API_KEY}`,
+    arb: `https://arb-mainnet.g.alchemy.com/v2/${API_KEY}`,
+    opt: `https://opt-mainnet.g.alchemy.com/v2/${API_KEY}`,
+    base: `https://base-mainnet.g.alchemy.com/v2/${API_KEY}`
+  };
 
   async function checkBalances() {
     const address = document.getElementById('wallet').value.trim();
+    const networkKey = document.getElementById('network').value;
+    const ALCHEMY_API_URL = NETWORK_URLS[networkKey];
+
     if (!address) return alert("Please enter a wallet address");
 
     document.getElementById('ethBalance').textContent = "⏳ Loading...";
     document.getElementById('tokenList').innerHTML = '';
     document.getElementById('loading').style.display = "block";
+    document.getElementById('viewMoreBtn').style.display = "none";
 
     try {
-      // ETH balance
       const ethRes = await fetch(ALCHEMY_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,11 +194,10 @@
         })
       });
       const ethData = await ethRes.json();
-      const ethWei = BigInt(ethData.result);
-      const eth = Number(ethWei) / 1e18;
-      document.getElementById('ethBalance').textContent = eth.toFixed(6) + " ETH";
+      const ethInWei = BigInt(ethData.result);
+      const ethInEther = Number(ethInWei) / 1e18;
+      document.getElementById('ethBalance').textContent = ethInEther.toFixed(6) + " ETH";
 
-      // ERC-20 tokens
       const tokenRes = await fetch(ALCHEMY_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,14 +210,16 @@
       });
 
       const tokenData = await tokenRes.json();
-      const tokens = tokenData.result.tokenBalances;
+      const tokens = tokenData.result.tokenBalances.filter(t => BigInt(t.tokenBalance || 0) > 0n);
       const tokenList = document.getElementById('tokenList');
+      const viewMoreBtn = document.getElementById('viewMoreBtn');
       tokenList.innerHTML = '';
+
+      let rendered = 0;
+      let hidden = [];
 
       for (const token of tokens) {
         const balance = BigInt(token.tokenBalance || 0);
-        if (balance === 0n) continue;
-
         let decimals = 18;
         let symbol = token.contractAddress.slice(0, 6) + "...";
 
@@ -218,28 +239,44 @@
             decimals = parseInt(meta.result.decimals || 18);
             symbol = meta.result.symbol || symbol;
           }
-        } catch (e) {
-          console.warn("Metadata failed for", token.contractAddress);
-        }
+        } catch (e) {}
 
         const human = Number(balance) / 10 ** decimals;
         const li = document.createElement('li');
         li.textContent = `${symbol}: ${human.toFixed(4)}`;
-        tokenList.appendChild(li);
+
+        if (rendered < 5) {
+          tokenList.appendChild(li);
+        } else {
+          li.style.display = "none";
+          hidden.push(li);
+          tokenList.appendChild(li);
+        }
+        rendered++;
       }
 
-      if (!tokenList.hasChildNodes()) {
+      if (hidden.length > 0) {
+        viewMoreBtn.style.display = 'inline-block';
+      }
+
+      if (tokens.length === 0) {
         const li = document.createElement('li');
-        li.textContent = "No tokens found.";
+        li.textContent = "No ERC-20 tokens found.";
         tokenList.appendChild(li);
       }
 
     } catch (err) {
-      alert("Error fetching balances. Try again.");
+      alert("Error fetching balances. Please try again.");
       console.error(err);
     }
 
     document.getElementById('loading').style.display = "none";
+  }
+
+  function showAllTokens() {
+    const items = document.querySelectorAll('#tokenList li');
+    items.forEach(item => item.style.display = 'block');
+    document.getElementById('viewMoreBtn').style.display = 'none';
   }
 </script>
 
