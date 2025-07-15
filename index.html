@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Base Wallet Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    input, button {
+      padding: 10px;
+      width: 100%;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    h2 {
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
+    .balance, .tokens {
+      margin-top: 20px;
+    }
+    ul { list-style-type: none; padding-left: 0; }
+    li { padding: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>Base Wallet Checker</h1>
+  <input type="text" id="wallet" placeholder="Enter Ethereum wallet address">
+  <button onclick="checkBalances()">Check Balances</button>
+
+  <div class="balance">
+    <h2>ETH Balance:</h2>
+    <p id="ethBalance">—</p>
+  </div>
+
+  <div class="tokens">
+    <h2>ERC-20 Token Balances:</h2>
+    <ul id="tokenList"></ul>
+  </div>
+
+  <script>
+    const ALCHEMY_API_URL = 'https://base-mainnet.g.alchemy.com/v2/xHFUtFcnGauzLjlis6SuTYvp4hm1bEfK';
+
+    async function checkBalances() {
+      const address = document.getElementById('wallet').value.trim();
+      if (!address) return alert("Please enter a wallet address");
+
+      // Fetch ETH balance
+      const ethRes = await fetch(ALCHEMY_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "eth_getBalance",
+          params: [address, "latest"],
+          id: 1
+        })
+      });
+      const ethData = await ethRes.json();
+      const ethInWei = BigInt(ethData.result);
+      const ethInEther = Number(ethInWei) / 1e18;
+      document.getElementById('ethBalance').textContent = ethInEther.toFixed(6) + " ETH";
+
+      // Fetch ERC-20 token balances
+      const tokenRes = await fetch(ALCHEMY_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "alchemy_getTokenBalances",
+          params: [address]
+        })
+      });
+      const tokenData = await tokenRes.json();
+      const tokens = tokenData.result.tokenBalances;
+
+      const tokenList = document.getElementById('tokenList');
+      tokenList.innerHTML = '';
+
+      for (const token of tokens) {
+        const balance = BigInt(token.tokenBalance || 0);
+        if (balance === 0n) continue;
+
+        // OPTIONAL: Replace with a better metadata API if needed
+        const tokenInfoRes = await fetch(`https://token-api.com/v1/token/${token.contractAddress}`);
+        const tokenInfo = await tokenInfoRes.json();
+        const decimals = tokenInfo?.decimals || 18;
+        const symbol = tokenInfo?.symbol || token.contractAddress.slice(0, 6) + '...';
+
+        const humanBalance = Number(balance) / 10 ** decimals;
+
+        const li = document.createElement('li');
+        li.textContent = `${symbol}: ${humanBalance.toFixed(4)}`;
+        tokenList.appendChild(li);
+      }
+    }
+  </script>
+</body>
+</html>
